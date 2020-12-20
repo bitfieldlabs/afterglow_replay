@@ -55,12 +55,6 @@
 // cycles per original interval, config A
 #define ORIG_CYCLES_A (ORIG_INT / TTAG_INT_A)
 
-// local time interval, config B [us]
-#define TTAG_INT_B (500)
-
-// cycles per original interval, config B
-#define ORIG_CYCLES_B (ORIG_INT / TTAG_INT_B)
-
 // number of columns in the lamp matrix
 #define NUM_COL 8
 
@@ -68,7 +62,7 @@
 #define NUM_ROW 8
 
 // default glow duration [ms]
-#define DEFAULT_GLOWDUR 140
+#define DEFAULT_GLOWDUR 180
 
 // glow duration scaling in the configuration
 #define GLOWDUR_CFG_SCALE 10
@@ -87,8 +81,6 @@
 #define TEST_MODE_DUR 8         // test duration per mode [s]
 #define TESTMODE_INT (500)      // test mode lamp switch interval [ms]
 #define TESTMODE_CYCLES_A ((uint32_t)TESTMODE_INT * 1000UL / (uint32_t)TTAG_INT_A) // number of cycles per testmode interval, config A
-#define TESTMODE_CYCLES_B ((uint32_t)TESTMODE_INT * 1000UL / (uint32_t)TTAG_INT_B) // number of cycles per testmode interval, config B
-
 
 // enable lamp replay in test mode
 #define REPLAY_ENABLED
@@ -282,19 +274,6 @@ ISR(TIMER1_COMPA_vect)
 
     // afterglow mode
     driveLampMatrix();
-
-#if (BOARD_REV >= 13)
-    // Measure the current flowing through the current measurement resistor
-    // (R26 on AG v1.3).
-    int cm = analogRead(CURR_MEAS_PIN);
-#if DEBUG_SERIAL
-    sLastCurr = cm;
-    if (sLastCurr > sMaxCurr)
-    {
-        sMaxCurr = sLastCurr;
-    }
-#endif
-#endif
 
     // replay mode
     uint16_t inData = testModeInput();
@@ -654,41 +633,6 @@ void setDefaultCfg()
             *pBrightness++ = DEFAULT_BRIGHTNESS;
         }
     }
-
-    // calculate the crc
-    uint16_t cfgSize = sizeof(sCfg);
-    sCfg.crc = calculateCRC32((uint8_t*)&sCfg, cfgSize-sizeof(sCfg.crc));
-}
-
-//------------------------------------------------------------------------------
-void defaultCfg()
-{
-    // set the default configuration
-    setDefaultCfg();
-}
-
-//------------------------------------------------------------------------------
-uint32_t calculateCRC32(const uint8_t *data, uint16_t length)
-{
-    uint32_t crc = 0xffffffff;
-    while (length--)
-    {
-        uint8_t c = *data++;
-        for (uint32_t i = 0x80; i > 0; i >>= 1)
-        {
-            bool bit = crc & 0x80000000;
-            if (c & i)
-            {
-                bit = !bit;
-            }
-            crc <<= 1;
-            if (bit)
-            {
-                crc ^= 0x04c11db7;
-            }
-        }
-    }
-    return crc;
 }
 
 #if DEBUG_SERIAL
@@ -2122,7 +2066,7 @@ const AG_LAMP_SWITCH_t kLampReplay[] PROGMEM =
 {6, 1, 0}, {0, 1, 2}, {5, 6, 0}, {7, 0, 0}, {4, 4, 2}, {6, 5, 0}, {0, 2, 4}, {1, 3, 0}, {2, 7, 0}, {5, 5, 0}, 
 {6, 0, 0}, {7, 1, 0}, {7, 5, 0}, {2, 3, 2}, {4, 5, 0}, {6, 7, 0}, {7, 4, 0}, {7, 6, 0}, {2, 2, 2}, {1, 4, 2}, 
 {6, 3, 0}, {6, 4, 0}, {7, 3, 0}, {0, 3, 3}, {3, 0, 0}, {5, 4, 0}, {4, 7, 2}, {6, 2, 0}, {6, 6, 0}, {7, 0, 0}, 
-{2, 0, 2}, {3, 1, 0}, {0, 4, 2}, {1, 5, 0}, {5, 3, 0}, {2, 1, 2}, {3, 2, 0}, {5, 7, 0}, {6, 1, 0}, {6, 5, 0}/*,   // +143.167s 143168
+{2, 0, 2}, {3, 1, 0}, {0, 4, 2}, {1, 5, 0}, {5, 3, 0}, {2, 1, 2}, {3, 2, 0}, {5, 7, 0}, {6, 1, 0}, {6, 5, 0},   // +143.167s 143168
 {7, 1, 0}, {1, 0, 4}, {6, 0, 0}, {7, 5, 0}, {0, 5, 2}, {3, 3, 0}, {5, 2, 0}, {6, 5, 0}, {7, 3, 0}, {1, 1, 4}, 
 {2, 2, 0}, {3, 4, 0}, {6, 3, 0}, {6, 4, 0}, {0, 6, 2}, {2, 3, 0}, {6, 6, 0}, {7, 0, 0}, {7, 4, 0}, {7, 6, 0}, 
 {1, 2, 2}, {1, 6, 0}, {5, 1, 0}, {2, 0, 3}, {3, 5, 0}, {6, 7, 0}, {0, 6, 2}, {4, 6, 0}, {6, 2, 0}, {1, 3, 2}, 
@@ -2130,7 +2074,7 @@ const AG_LAMP_SWITCH_t kLampReplay[] PROGMEM =
 {7, 3, 0}, {0, 4, 2}, {1, 5, 2}, {4, 0, 0}, {5, 5, 0}, {6, 0, 0}, {6, 6, 0}, {7, 0, 0}, {7, 2, 0}, {7, 5, 2},   // +143.700s 143696
 {0, 3, 2}, {1, 0, 2}, {2, 2, 0}, {2, 3, 0}, {4, 1, 0}, {5, 4, 0}, {6, 3, 0}, {6, 4, 0}, {6, 7, 0}, {7, 1, 0}, 
 {7, 4, 0}, {7, 6, 0}, {0, 2, 3}, {5, 3, 2}, {7, 3, 0}, {0, 1, 2}, {1, 1, 0}, {2, 0, 0}, {4, 2, 0}, {6, 2, 0}, 
-{6, 7, 0}, {4, 6, 2}, {4, 7, 0}, {4, 3, 2}, {5, 2, 0}, {6, 1, 0}, {6, 6, 0}, {0, 0, 2}, {1, 2, 0}, {2, 1, 0}, 
+{6, 7, 0}, {4, 6, 2}, {4, 7, 0}, {4, 3, 2}, {5, 2, 0}, {6, 1, 0}, {6, 6, 0}, {0, 0, 2}, {1, 2, 0}, {2, 1, 0}/*, 
 {7, 0, 0}, {5, 1, 2}, {2, 4, 2}, {6, 0, 0}, {6, 5, 0}, {7, 5, 0}, {0, 6, 2}, {1, 3, 0}, {7, 1, 0}, {5, 0, 2}, 
 {1, 7, 2}, {2, 5, 0}, {6, 3, 0}, {6, 4, 0}, {6, 7, 0}, {0, 5, 2}, {1, 4, 0}, {2, 2, 0}, {2, 3, 0}, {7, 3, 0},   // +144.167s 144160
 {5, 6, 3}, {7, 4, 0}, {7, 6, 0}, {2, 0, 2}, {2, 6, 0}, {6, 2, 0}, {6, 6, 0}, {7, 0, 2}, {0, 4, 2}, {1, 5, 0}, 
